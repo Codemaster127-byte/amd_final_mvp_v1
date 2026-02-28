@@ -1,0 +1,98 @@
+{
+  "workflow_name": "enterprise_login",
+  "entry_node": "1cd297d36b8a",
+  "nodes": {
+    "1cd297d36b8a": {
+      "node_id": "1cd297d36b8a",
+      "url_path": "/login",
+      "dom_state_hash": "d06a6b41",
+      "semantic_label": "login_login",
+      "action_context": "login",
+      "visit_count": 8,
+      "confidence": 0.5,
+      "metadata": {}
+    },
+    "769c0acc8aa5": {
+      "node_id": "769c0acc8aa5",
+      "url_path": "/dashboard",
+      "dom_state_hash": "eb14e05a",
+      "semantic_label": "general_dashboard",
+      "action_context": "general",
+      "visit_count": 4,
+      "confidence": 0.5,
+      "metadata": {}
+    },
+    "4419b89a0609": {
+      "node_id": "4419b89a0609",
+      "url_path": "/reports",
+      "dom_state_hash": "be2386dd",
+      "semantic_label": "general_reports",
+      "action_context": "general",
+      "visit_count": 2,
+      "confidence": 0.5,
+      "metadata": {}
+    }
+  },
+  "edges": {
+    "a8ab9df00d6e": {
+      "edge_id": "a8ab9df00d6e",
+      "from_node": "1cd297d36b8a",
+      "to_node": "1cd297d36b8a",
+      "event_type": "navigation",
+      "target_role": "page",
+      "text_label": "",
+      "selector_hash": "d41d8cd9",
+      "network_signature": "GET:/login",
+      "probability": 0.75,
+      "success_count": 2,
+      "failure_count": 0,
+      "value": null,
+      "reliability": 1.0
+    },
+    "d1fd31040f67": {
+      "edge_id": "d1fd31040f67",
+      "from_node": "1cd297d36b8a",
+      "to_node": "769c0acc8aa5",
+      "event_type": "click",
+      "target_role": "button",
+      "text_label": "Login",
+      "selector_hash": "c9165970",
+      "network_signature": "GET:/login",
+      "probability": 0.42857142857142855,
+      "success_count": 2,
+      "failure_count": 3,
+      "value": null,
+      "reliability": 0.4
+    },
+    "bc77990c9ac7": {
+      "edge_id": "bc77990c9ac7",
+      "from_node": "769c0acc8aa5",
+      "to_node": "769c0acc8aa5",
+      "event_type": "navigation",
+      "target_role": "page",
+      "text_label": "",
+      "selector_hash": "d41d8cd9",
+      "network_signature": "GET:/dashboard",
+      "probability": 0.75,
+      "success_count": 2,
+      "failure_count": 0,
+      "value": null,
+      "reliability": 1.0
+    },
+    "4c0f8eae92bb": {
+      "edge_id": "4c0f8eae92bb",
+      "from_node": "769c0acc8aa5",
+      "to_node": "4419b89a0609",
+      "event_type": "click",
+      "target_role": "link",
+      "text_label": "Reports",
+      "selector_hash": "696483d8",
+      "network_signature": "GET:/dashboard",
+      "probability": 0.75,
+      "success_count": 2,
+      "failure_count": 0,
+      "value": null,
+      "reliability": 1.0
+    }
+  }
+}
