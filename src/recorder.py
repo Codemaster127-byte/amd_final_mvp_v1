@@ -1,9 +1,3 @@
-"""
-Instrumentation Layer — Browser Recorder
-Captures real user interactions via Playwright and produces raw event streams.
-Run record_session() to capture a workflow, then mine it into an intent graph.
-"""
-
 import asyncio
 import json
 import time
@@ -40,10 +34,6 @@ class RawEvent:
 
 
 class BrowserRecorder:
-    """
-    Records user browser interactions as a raw event stream.
-    Injects lightweight JS hooks to capture DOM events.
-    """
 
     INJECTION_SCRIPT = """
     (() => {
@@ -101,14 +91,11 @@ class BrowserRecorder:
         output_path: Optional[str] = None,
         timeout_seconds: int = 120
     ) -> list[dict]:
-        """
-        Opens a browser for the user to interact with.
-        Records all interactions until browser closes or timeout.
-        """
-        print(f"\n🎬 Starting recording session...")
-        print(f"   → Navigate to: {start_url}")
-        print(f"   → Timeout: {timeout_seconds}s")
-        print(f"   → Close the browser when done to save the workflow\n")
+
+        print(f"\nStarting recording session...")
+        print(f"   Navigate to: {start_url}")
+        print(f"   Timeout: {timeout_seconds}s")
+        print(f"   Close the browser when done to save the workflow\n")
 
         raw_events = []
 
@@ -117,10 +104,8 @@ class BrowserRecorder:
             context = await browser.new_context()
             page: Page = await context.new_page()
 
-            # Inject recorder script on every page load
             await context.add_init_script(self.INJECTION_SCRIPT)
 
-            # Track network requests
             async def on_request(request):
                 if request.resource_type in ("fetch", "xhr"):
                     raw_events.append({
@@ -134,7 +119,6 @@ class BrowserRecorder:
 
             page.on("request", on_request)
 
-            # Track navigation
             async def on_navigation(frame):
                 if frame == page.main_frame:
                     raw_events.append({
@@ -151,13 +135,11 @@ class BrowserRecorder:
 
             await page.goto(start_url)
 
-            # Poll for events injected by JS
             start_time = time.time()
             try:
                 while time.time() - start_time < timeout_seconds:
                     await asyncio.sleep(2)
 
-                    # Harvest events from page JS
                     try:
                         js_events = await page.evaluate(
                             "() => { const e = window.__intentEvents || []; "
@@ -168,17 +150,17 @@ class BrowserRecorder:
                             raw_events.append(ev)
 
                         if js_events:
-                            print(f"   ✓ Captured {len(js_events)} events "
+                            print(f"   Captured {len(js_events)} events "
                                   f"(total: {len(raw_events)})")
                     except Exception:
-                        pass  # Page may be navigating
+                        pass
 
             except Exception as e:
                 print(f"   Recording ended: {e}")
 
             await browser.close()
 
-        print(f"\n✅ Recording complete. {len(raw_events)} raw events captured.")
+        print(f"\nRecording complete. {len(raw_events)} raw events captured.")
 
         if output_path:
             Path(output_path).write_text(json.dumps(raw_events, indent=2))
@@ -187,7 +169,6 @@ class BrowserRecorder:
         return raw_events
 
     async def _get_dom_snapshot(self, page: Page) -> str:
-        """Get a lightweight DOM snapshot (tag structure only)."""
         try:
             return await page.evaluate(
                 "() => document.body.innerHTML.slice(0, 2000)"
@@ -197,14 +178,9 @@ class BrowserRecorder:
 
 
 class ScriptedRecorder:
-    """
-    For testing/demo: simulate a recording session with scripted interactions.
-    Useful when you don't have a real browser session to record.
-    """
 
     @staticmethod
     async def simulate_login_workflow(start_url: str) -> list[dict]:
-        """Simulates recording a login workflow."""
         t = time.time()
         return [
             {
@@ -257,7 +233,6 @@ class ScriptedRecorder:
 
     @staticmethod
     async def simulate_search_workflow(start_url: str) -> list[dict]:
-        """Simulates recording a search-and-filter workflow."""
         t = time.time()
         return [
             {

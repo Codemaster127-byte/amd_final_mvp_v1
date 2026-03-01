@@ -1,7 +1,17 @@
-# Intent Protocol Layer — MVP
+# Intent Protocol Layer (MVP)
 
-> Runtime semantic bridging engine for autonomous agent workflows.  
-> Converts software interfaces into executable intent graphs.
+This project turns browser actions into a structured workflow graph.
+
+It can:
+
+- Record browser interactions  
+- Convert them into a clean internal format  
+- Build a state graph from them  
+- Plan a path to a target page  
+- Execute that plan in a real browser  
+- Adjust probabilities based on success or failure  
+
+This is an MVP focused on clarity and correctness.
 
 ---
 
@@ -14,132 +24,110 @@ pip install -r requirements.txt
 playwright install chromium
 ```
 
-### 2. Run the demo (no browser needed)
+---
+
+### 2. Run the demo
 
 ```bash
 python demo.py
 ```
 
-This simulates a full pipeline:
-- **Record** → simulated browser session
-- **Canonicalize** → normalize raw events
-- **Mine** → build probabilistic intent graph
-- **Plan** → compute execution path
-- **Self-heal** → demonstrate adaptive recovery
+The demo shows:
 
-### 3. Start the API server
+- Raw simulated events  
+- Canonicalized events  
+- Generated intent graph  
+- Execution plan  
+- Self-healing behavior  
+
+No real browser interaction is required for the demo.
+
+---
+
+### 3. Start the API
 
 ```bash
 uvicorn api.main:app --reload --port 8000
 ```
 
-Then open `http://localhost:8000/docs` for interactive Swagger UI.
+Then open:
+
+```
+http://localhost:8000/docs
+```
+
+to test the API using Swagger.
 
 ---
 
-## API Endpoints
+## Main API Endpoints
 
-### `POST /workflows/simulate`
-Generate a workflow from a built-in scenario (no recording needed).
+### POST `/workflows/simulate`
 
-```bash
-curl -X POST http://localhost:8000/workflows/simulate \
-  -H "Content-Type: application/json" \
-  -d '{"workflow_name": "login_flow", "scenario": "login", "base_url": "https://yourapp.com"}'
-```
-
-### `POST /workflows/mine`
-Ingest raw browser events and build an intent graph.
-
-```bash
-curl -X POST http://localhost:8000/workflows/mine \
-  -H "Content-Type: application/json" \
-  -d '{"workflow_name": "my_workflow", "raw_events": [...]}'
-```
-
-### `GET /workflows`
-List all known workflows and their graph structure.
-
-### `POST /execute`
-Execute a named intent (dry_run=true for safe planning-only mode).
-
-```bash
-curl -X POST http://localhost:8000/execute \
-  -H "Content-Type: application/json" \
-  -d '{
-    "workflow_name": "login_flow",
-    "intent_label": "dashboard",
-    "start_url": "https://yourapp.com/login",
-    "dry_run": true
-  }'
-```
-
-### `POST /feedback`
-Record execution outcome to update transition probabilities (self-healing).
-
-```bash
-curl -X POST http://localhost:8000/feedback \
-  -H "Content-Type: application/json" \
-  -d '{"workflow_name": "login_flow", "edge_id": "abc123", "success": false}'
-```
+Create a workflow graph using a built-in scenario (`login` or `search`).
 
 ---
 
-## Architecture
+### POST `/workflows/mine`
 
-```
-Browser Events
-     │
-     ▼
-EventCanonicalizer     ← normalizes selectors, DOM hashes, text labels
-     │
-     ▼
-WorkflowMiner          ← builds probabilistic state machine (IntentGraph)
-     │
-     ▼
-IntentGraph            ← nodes=states, edges=transitions with probabilities
-     │
-     ▼
-IntentExecutor         ← plans + executes path via Playwright
-     │
-     ├─ Strategy 1: text_match    (resilient to selector drift)
-     ├─ Strategy 2: role_match    (ARIA-based, most robust)
-     ├─ Strategy 3: selector      (fastest, brittle)
-     └─ Strategy 4: network       (bypass UI entirely)
-          │
-          ▼
-     Feedback Loop     ← updates probabilities, enables self-healing
-```
+Send raw browser events to build or update a workflow graph.
+
+---
+
+### GET `/workflows`
+
+List all stored workflows.
+
+---
+
+### POST `/execute`
+
+Execute an intent from a workflow.
+
+Set `"dry_run": true` to generate the plan without launching a browser.
+
+---
+
+### POST `/feedback`
+
+Update transition probabilities based on execution results.
+
+---
+
+## How It Works
+
+1. Browser events are captured  
+2. Events are normalized  
+3. A directed graph is built:
+   - Nodes = UI states  
+   - Edges = transitions  
+4. The executor finds a path to a target state  
+5. If a step fails, it searches for an alternate path  
+
+Simple as that.
+
+---
 
 ## Project Structure
 
 ```
 intent-protocol-mvp/
 ├── src/
-│   ├── canonicalizer.py    # Event normalization layer
-│   ├── graph.py            # Intent graph + workflow miner
-│   ├── recorder.py         # Playwright browser recorder
-│   └── executor.py         # Multi-strategy execution engine
+│   ├── canonicalizer.py
+│   ├── graph.py
+│   ├── recorder.py
+│   └── executor.py
 ├── api/
-│   └── main.py             # FastAPI REST interface
-├── data/                   # Persisted intent graphs (auto-created)
-├── demo.py                 # End-to-end demo script
+│   └── main.py
+├── data/          # saved workflow graphs
+├── demo.py
 └── requirements.txt
 ```
 
-## AMD Integration Notes
+---
 
-- **ROCm acceleration**: Replace `torch.device("cpu")` with `torch.device("cuda")` 
-  once PyTorch-ROCm is installed for local GPU inference
-- **Ryzen CPUs**: Playwright browser orchestration + FastAPI run efficiently on 
-  Ryzen multi-core; set `PLAYWRIGHT_WORKERS=N` to match core count
-- **Local execution**: All inference runs locally by default — no external API calls
+## Notes
 
-## Next Steps (Beyond MVP)
-
-- [ ] Vector embeddings for semantic state similarity (sentence-transformers)
-- [ ] Real ML-based intent clustering (replace text-match heuristics)
-- [ ] Graph database backend (Neo4j) for large workflow libraries
-- [ ] Multi-session learning with session clustering
-- [ ] Visual dashboard for intent graph inspection
-- [ ] Desktop app support (Electron/native automation)
+- Everything runs locally  
+- Graphs are saved in the `data/` directory  
+- This is a foundation project — designed to be extended  

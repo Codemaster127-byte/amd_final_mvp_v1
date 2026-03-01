@@ -1,9 +1,3 @@
-"""
-Intent Graph + Workflow Mining Engine
-Builds a probabilistic state machine from canonicalized event sessions.
-Each node = a UI state; each edge = a transition (action) with probability.
-"""
-
 import json
 import hashlib
 from collections import defaultdict
@@ -16,17 +10,12 @@ import networkx as nx
 from src.canonicalizer import CanonicalEvent
 
 
-# ─────────────────────────────────────────────────────────────
-# Data Structures
-# ─────────────────────────────────────────────────────────────
-
 @dataclass
 class IntentNode:
-    """A state in the intent graph."""
     node_id: str
     url_path: str
     dom_state_hash: str
-    semantic_label: str          # e.g. "login_page", "dashboard"
+    semantic_label: str
     action_context: str
     visit_count: int = 0
     confidence: float = 0.5
@@ -38,16 +27,15 @@ class IntentNode:
 
 @dataclass
 class IntentEdge:
-    """A transition between states."""
     edge_id: str
     from_node: str
     to_node: str
-    event_type: str              # click, input, form_submit, navigation
+    event_type: str
     target_role: str
     text_label: str
     selector_hash: str
     network_signature: str
-    probability: float = 1.0    # updated via feedback
+    probability: float = 1.0
     success_count: int = 0
     failure_count: int = 0
     value: Optional[str] = None
@@ -65,15 +53,7 @@ class IntentEdge:
         return d
 
 
-# ─────────────────────────────────────────────────────────────
-# Intent Graph
-# ─────────────────────────────────────────────────────────────
-
 class IntentGraph:
-    """
-    Probabilistic state machine representing discovered workflows.
-    Built from recorded sessions, updated via execution feedback.
-    """
 
     def __init__(self, workflow_name: str):
         self.workflow_name = workflow_name
@@ -94,14 +74,12 @@ class IntentGraph:
 
     def add_edge(self, edge: IntentEdge) -> None:
         self.edges[edge.edge_id] = edge
-        # Build attrs without keys that conflict with networkx positional args
         attrs = {k: v for k, v in edge.to_dict().items()
                  if k not in ("from_node", "to_node")}
         attrs["weight"] = edge.probability
         self.graph.add_edge(edge.from_node, edge.to_node, **attrs)
 
     def get_path(self, from_node: str, to_node: str) -> list[IntentEdge]:
-        """Find shortest reliable path between two states."""
         try:
             path_nodes = nx.shortest_path(
                 self.graph, from_node, to_node,
@@ -119,13 +97,10 @@ class IntentGraph:
             return []
 
     def find_node_by_label(self, label: str) -> Optional[IntentNode]:
-        """Find a node by semantic label (fuzzy match)."""
         label_lower = label.lower()
-        # Exact match first
         for node in self.nodes.values():
             if node.semantic_label.lower() == label_lower:
                 return node
-        # Partial match
         for node in self.nodes.values():
             if label_lower in node.semantic_label.lower():
                 return node
@@ -134,7 +109,6 @@ class IntentGraph:
         return None
 
     def update_edge_feedback(self, edge_id: str, success: bool) -> None:
-        """Self-healing: update transition probabilities from execution results."""
         if edge_id not in self.edges:
             return
         edge = self.edges[edge_id]
@@ -142,17 +116,13 @@ class IntentGraph:
             edge.success_count += 1
         else:
             edge.failure_count += 1
-        # Bayesian-style probability update
         total = edge.success_count + edge.failure_count
         edge.probability = (edge.success_count + 1) / (total + 2)
-        # Update graph weight
         if self.graph.has_edge(edge.from_node, edge.to_node):
             self.graph[edge.from_node][edge.to_node]["weight"] = edge.probability
 
     def get_alternate_paths(self, from_node: str, to_node: str, 
                             exclude_edges: list[str]) -> list[IntentEdge]:
-        """Find alternative path when primary path fails (self-healing)."""
-        # Temporarily remove failed edges
         removed = []
         for eid in exclude_edges:
             if eid in self.edges:
@@ -163,7 +133,6 @@ class IntentGraph:
 
         path = self.get_path(from_node, to_node)
 
-        # Restore removed edges
         for (fn, tn, e) in removed:
             self.graph.add_edge(fn, tn, edge_id=e.edge_id, weight=e.probability, **e.to_dict())
 
@@ -203,15 +172,7 @@ class IntentGraph:
                 f"{len(self.nodes)} states, {len(self.edges)} transitions")
 
 
-# ─────────────────────────────────────────────────────────────
-# Workflow Miner
-# ─────────────────────────────────────────────────────────────
-
 class WorkflowMiner:
-    """
-    Converts canonicalized event sessions into an IntentGraph.
-    Multiple sessions of the same workflow are merged to improve coverage.
-    """
 
     def __init__(self, workflow_name: str):
         self.workflow_name = workflow_name
@@ -219,11 +180,9 @@ class WorkflowMiner:
         self._sessions_processed = 0
 
     def mine_session(self, events: list[CanonicalEvent]) -> IntentGraph:
-        """Process one session of events and update the intent graph."""
         if len(events) < 2:
             return self.graph
 
-        # Build nodes from unique states
         for event in events:
             node_id = event.state_id
             if node_id not in self.graph.nodes:
@@ -240,12 +199,10 @@ class WorkflowMiner:
             else:
                 self.graph.nodes[node_id].visit_count += 1
 
-        # Build edges from consecutive events
         for i in range(len(events) - 1):
             src_event = events[i]
             dst_event = events[i + 1]
-            
-            # Skip pure noise transitions (same state)
+
             if src_event.state_id == dst_event.state_id and \
                src_event.event_type not in ("form_submit", "navigation"):
                 continue
@@ -268,7 +225,6 @@ class WorkflowMiner:
                 )
                 self.graph.add_edge(edge)
             else:
-                # Reinforce existing transition
                 self.graph.edges[edge_id].success_count += 1
                 total = (self.graph.edges[edge_id].success_count + 
                          self.graph.edges[edge_id].failure_count)
@@ -288,7 +244,6 @@ class WorkflowMiner:
         return self.graph
 
     def _infer_semantic_label(self, event: CanonicalEvent) -> str:
-        """Build a human-readable label from event signals."""
         path_parts = [p for p in event.url_path.split("/") if p and p != "N"]
         path_hint = "_".join(path_parts[-2:]) if path_parts else "root"
         ctx = event.action_context
